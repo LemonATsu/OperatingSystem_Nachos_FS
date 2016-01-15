@@ -190,7 +190,6 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
     FileHeader *hdr;
     char BasedPath[MAX_PATH_LEN + 1];
     char act_name[10];
-    int tarDir_sector;
     int success, sector;
     int size = initialSize;
     DEBUG(dbgFile, "Creating file " << name << " size " << initialSize);
@@ -200,24 +199,24 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
 
     rootDirectory = new Directory(NumDirEntries);
     rootDirectory->FetchFrom(directoryFile);
-    if (rootDirectory->SearchPath(name) != -1)
+    
+    ExtractBasePath(BasedPath, act_name, name);
+    sector = rootDirectory->SearchPath(BasedPath);
+
+    if(sector == -1) {
+        return 0;
+    }
+    
+    targetFile = new OpenFile(sector);
+    targetDirectory = new Directory(NumDirEntries);
+    targetDirectory->FetchFrom(targetFile);
+    
+    
+    if (targetDirectory->Find(act_name) != -1)
       success = 0;			// file is already in directory
     else {	
-        ExtractBasePath(BasedPath, act_name, name);
-        cout << act_name << endl;
+
         
-        if(BasedPath[0] != '\0') {
-            tarDir_sector = rootDirectory->SearchPath(BasedPath);
-            targetFile = new OpenFile(tarDir_sector);
-            targetDirectory = new Directory(NumDirEntries);
-            targetDirectory->FetchFrom(targetFile);
-        } else {
-            tarDir_sector = DirectorySector;
-            targetDirectory = rootDirectory;
-            targetFile = directoryFile;
-        }
-
-
 
         freeMap = new PersistentBitmap(freeMapFile,NumSectors);
         sector = freeMap->FindAndSet();	// find a sector to hold the file header
@@ -225,21 +224,30 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
             success = 0;		// no free block for file header 
         else if (!targetDirectory->Add(act_name, sector, isDir))
             success = 0;	// no space in directory
-	else {
+	    else {
     	    hdr = new FileHeader;
 	    if (!hdr->Allocate(freeMap, size))
             	success = FALSE;	// no space on disk for data
 	    else {	
 	    	success = 1;
 		// everthing worked, flush all changes back to disk
-    	    	hdr->WriteBack(sector); 		
-    	    	targetDirectory->WriteBack(targetFile);
-    	    	freeMap->WriteBack(freeMapFile);
-	    }
+
+                    hdr->WriteBack(sector); 		
+    	    	    targetDirectory->WriteBack(targetFile);
+    	    	    freeMap->WriteBack(freeMapFile);
+                /*if(isDir) {
+                    targetFile = new OpenFile(sector);
+                    targetDirectory = new Directory(NumDirEntries);
+                    targetDirectory->FetchFrom(targetFile);
+                }*/
+	        }
             delete hdr;
-	}
+	    }
         delete freeMap;
     }
+
+
+    delete targetFile;
     delete targetDirectory;
     return success;
 }
