@@ -24,6 +24,8 @@
 #include "filehdr.h"
 #include "directory.h"
 
+#define DirectorySector 1
+
 //----------------------------------------------------------------------
 // Directory::Directory
 // 	Initialize a directory; initially, the directory is completely
@@ -112,10 +114,52 @@ int
 Directory::Find(char *name)
 {
     int i = FindIndex(name);
-
     if (i != -1)
 	return table[i].sector;
     return -1;
+}
+
+int 
+Directory::SearchPath(char *name)
+{
+    int j;
+    int i;
+    int sector = -1;
+    int flag = 0;
+    char path[FileNameMaxLen + 1];
+    Directory *directory;
+    for(i = 1; name[i]; i++) {
+        if(name[i] == '/') {
+            for(j = 0; j < i; j++)
+                path[j] = name[j];
+            
+            path[j] = '\0';
+            flag = 1;
+            break;
+        }
+    }
+        
+    if(!flag) {
+        for(j = 0; name[j]; j++)
+            path[j] = name[j];
+        path[j] = '\0';
+        if(path[1] == '\0')
+            return DirectorySector; 
+        return Find(path);
+        
+    }
+    
+    sector = Find(path);
+
+    for(j = 0; name[j + i]; j++)
+        path[j] = name[j + i];
+    path[j] = '\0';
+    
+    if(sector == -1) return sector;
+    directory = new Directory(64);
+    OpenFile* dir = new OpenFile(sector);
+    directory->FetchFrom(dir);
+    return directory->SearchPath(path);
 }
 
 //----------------------------------------------------------------------
@@ -130,11 +174,11 @@ Directory::Find(char *name)
 //----------------------------------------------------------------------
 
 bool
-Directory::Add(char *name, int newSector)
+Directory::Add(char *name, int newSector, bool isDir)
 { 
     if (FindIndex(name) != -1)
 	return FALSE;
-
+    cout << "New file : " << name << endl;
     for (int i = 0; i < tableSize; i++)
         if (!table[i].inUse) {
             table[i].inUse = TRUE;
