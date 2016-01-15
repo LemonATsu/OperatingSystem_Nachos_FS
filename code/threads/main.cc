@@ -45,7 +45,6 @@
 #include "filesys.h"
 #include "openfile.h"
 #include "sysdep.h"
-
 // global variables
 Kernel *kernel;
 Debug *debug;
@@ -98,7 +97,7 @@ Copy(char *from, char *to)
 
 // Create a Nachos file of the same length
     DEBUG('f', "Copying file " << from << " of size " << fileLength <<  " to file " << to);
-    if (!kernel->fileSystem->Create(to, fileLength)) {   // Create Nachos file
+    if (!kernel->fileSystem->Create(to, fileLength, false)) {   // Create Nachos file
         printf("Copy: couldn't create output file %s\n", to);
         Close(fd);
         return;
@@ -157,7 +156,13 @@ Print(char *name)
 static void
 CreateDirectory(char *name)
 {
-	// MP4 Assignment
+    int fd;
+    
+    if(!kernel->fileSystem->Create(name, 0, true)) {
+        printf("Create directory file %s failed!\n", name);
+        return;
+    }
+
 }
 
 //----------------------------------------------------------------------
@@ -320,7 +325,7 @@ main(int argc, char **argv)
 		kernel->fileSystem->Print();
     }
     if (dirListFlag) {
-		kernel->fileSystem->List();
+		kernel->fileSystem->List(listDirectoryName);
     }
 	if (mkdirFlag) {
 		// MP4 mod tag

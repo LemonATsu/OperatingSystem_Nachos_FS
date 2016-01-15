@@ -339,7 +339,7 @@ int Kernel::CreateFile(char *filename)
 
 int Kernel::CreateFile(char *filename, int size)
 {
-	return fileSystem->Create(filename, size);
+	return fileSystem->Create(filename, size, false);
 }
 
 OpenFileId Kernel::OpenFile(char *filename)
