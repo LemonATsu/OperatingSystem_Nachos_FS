@@ -36,6 +36,8 @@
 #include "copyright.h"
 #include "sysdep.h"
 #include "openfile.h"
+typedef int OpenFileId;
+#define MAX_SYS_OPENF 20
 
 #ifdef FILESYS_STUB 		// Temporarily implement file system calls as 
 				// calls to UNIX, until the real file system
@@ -77,7 +79,7 @@ class FileSystem {
 	// MP4 mod tag
 	~FileSystem();
 
-    bool Create(char *name, int initialSize);  	
+    int Create(char *name, int initialSize);  	
 					// Create a file (UNIX creat)
 
     OpenFile* Open(char *name); 	// Open a file (UNIX open)
@@ -87,12 +89,18 @@ class FileSystem {
     void List();			// List all the files in the file system
 
     void Print();			// List all the files and their contents
+    OpenFileId OpenFileForId(char *name);
+    int WriteToFileId(char *buf, int size, OpenFileId id);
+    int ReadFromFileId(char *buf, int size, OpenFileId id);
+    int CloseFileId(OpenFileId id);
 
   private:
    OpenFile* freeMapFile;		// Bit map of free disk blocks,
 					// represented as a file
    OpenFile* directoryFile;		// "Root" directory -- list of 
 					// file names, represented as a file
+   
+   OpenFile* SysWideOpenFileTable[MAX_SYS_OPENF];
 };
 
 #endif // FILESYS

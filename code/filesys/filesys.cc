@@ -84,8 +84,8 @@ FileSystem::FileSystem(bool format)
     if (format) {
         PersistentBitmap *freeMap = new PersistentBitmap(NumSectors);
         Directory *directory = new Directory(NumDirEntries);
-		FileHeader *mapHdr = new FileHeader;
-		FileHeader *dirHdr = new FileHeader;
+		FileHeader *mapHdr = new FileHeader();
+		FileHeader *dirHdr = new FileHeader();
 
         DEBUG(dbgFile, "Formatting the file system.");
 
@@ -96,9 +96,8 @@ FileSystem::FileSystem(bool format)
 
 		// Second, allocate space for the data blocks containing the contents
 		// of the directory and bitmap files.  There better be enough space!
-
 		ASSERT(mapHdr->Allocate(freeMap, FreeMapFileSize));
-		ASSERT(dirHdr->Allocate(freeMap, DirectoryFileSize));
+        ASSERT(dirHdr->Allocate(freeMap, DirectoryFileSize));
 
 		// Flush the bitmap and directory FileHeaders back to disk
 		// We need to do this before we can "Open" the file, since open
@@ -106,8 +105,8 @@ FileSystem::FileSystem(bool format)
 		// on it!).
 
         DEBUG(dbgFile, "Writing headers back to disk.");
-		mapHdr->WriteBack(FreeMapSector);    
-		dirHdr->WriteBack(DirectorySector);
+        mapHdr->WriteBack(FreeMapSector);    
+        dirHdr->WriteBack(DirectorySector);
 
 		// OK to open the bitmap and directory files now
 		// The file system operations assume these two files are left open
@@ -181,35 +180,34 @@ FileSystem::~FileSystem()
 //	"initialSize" -- size of file to be created
 //----------------------------------------------------------------------
 
-bool
+int
 FileSystem::Create(char *name, int initialSize)
 {
     Directory *directory;
     PersistentBitmap *freeMap;
     FileHeader *hdr;
     int sector;
-    bool success;
+    int success;
 
     DEBUG(dbgFile, "Creating file " << name << " size " << initialSize);
 
     directory = new Directory(NumDirEntries);
     directory->FetchFrom(directoryFile);
-
     if (directory->Find(name) != -1)
-      success = FALSE;			// file is already in directory
+      success = 0;			// file is already in directory
     else {	
         freeMap = new PersistentBitmap(freeMapFile,NumSectors);
         sector = freeMap->FindAndSet();	// find a sector to hold the file header
     	if (sector == -1) 		
-            success = FALSE;		// no free block for file header 
+            success = 0;		// no free block for file header 
         else if (!directory->Add(name, sector))
-            success = FALSE;	// no space in directory
+            success = 0;	// no space in directory
 	else {
     	    hdr = new FileHeader;
 	    if (!hdr->Allocate(freeMap, initialSize))
             	success = FALSE;	// no space on disk for data
 	    else {	
-	    	success = TRUE;
+	    	success = 1;
 		// everthing worked, flush all changes back to disk
     	    	hdr->WriteBack(sector); 		
     	    	directory->WriteBack(directoryFile);
@@ -239,7 +237,8 @@ FileSystem::Open(char *name)
     Directory *directory = new Directory(NumDirEntries);
     OpenFile *openFile = NULL;
     int sector;
-
+    int fd;
+    
     DEBUG(dbgFile, "Opening file" << name);
     directory->FetchFrom(directoryFile);
     sector = directory->Find(name); 
@@ -346,5 +345,48 @@ FileSystem::Print()
     delete freeMap;
     delete directory;
 } 
+
+OpenFileId 
+FileSystem::OpenFileForId(char *name)
+{
+    int fd = 0;
+    OpenFile* file = this->Open(name);
+    cout << "OPEN" << endl;
+    while(fd <= MAX_SYS_OPENF) {
+        fd ++;
+        if(!SysWideOpenFileTable[fd]) {
+            SysWideOpenFileTable[fd] = file;
+            break;
+        }
+    }
+    ASSERT(fd <= MAX_SYS_OPENF);
+
+    return fd;
+}
+int 
+FileSystem::WriteToFileId(char *buf, int size, OpenFileId id)
+{
+    OpenFile* file = SysWideOpenFileTable[id];
+    return file->Write(buf, size);
+}
+int 
+FileSystem::ReadFromFileId(char *buf, int size, OpenFileId id)
+{
+    OpenFile* file = SysWideOpenFileTable[id];
+    return file->Read(buf, size);
+}
+int 
+FileSystem::CloseFileId(OpenFileId id)
+{
+    OpenFile* file = SysWideOpenFileTable[id];
+    
+    if(file == NULL)
+        return 0;
+    delete file;
+
+    SysWideOpenFileTable[id] = NULL;
+    
+    return 1;
+}
 
 #endif // FILESYS_STUB

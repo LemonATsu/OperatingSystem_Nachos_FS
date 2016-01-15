@@ -29,6 +29,7 @@
 #include "synchdisk.h"
 #include "main.h"
 
+
 //----------------------------------------------------------------------
 // MP4 mod tag
 // FileHeader::FileHeader
@@ -41,6 +42,14 @@ FileHeader::FileHeader()
 	numBytes = -1;
 	numSectors = -1;
 	memset(dataSectors, -1, sizeof(dataSectors));
+
+    for(int i = 0; i < NumIndirect; i ++) {
+        indirectTable[i] = NULL;
+    }
+
+    for(int i = 0; i < NumTripleIndirect; i ++) {
+        tripleIndirectTable[i] = NULL;
+    }
 }
 
 //----------------------------------------------------------------------
@@ -52,7 +61,11 @@ FileHeader::FileHeader()
 //----------------------------------------------------------------------
 FileHeader::~FileHeader()
 {
-	// nothing to do now
+
+    for(int i = 0; i < NumIndirect; i++) {
+        if(indirectTable[i])
+            delete indirectTable[i];
+    }
 }
 
 //----------------------------------------------------------------------
@@ -69,19 +82,69 @@ FileHeader::~FileHeader()
 bool
 FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize)
 { 
+    int indirectSize;
+    int offset; // # of Sector left after allocate to direct index.
+    int indexNeeds;
+    int sectorNeeds;
+
     numBytes = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);
+    
+    
     if (freeMap->NumClear() < numSectors)
 	return FALSE;		// not enough space
-
-    for (int i = 0; i < numSectors; i++) {
-	dataSectors[i] = freeMap->FindAndSet();
-	// since we checked that there was enough free space,
-	// we expect this to succeed
-	ASSERT(dataSectors[i] >= 0);
+    sectorNeeds = numSectors <= NumDirect ? numSectors : NumDirect;
+    offset = numSectors - sectorNeeds;
+    // allocate direct level datasector
+    for (int i = 0; i < sectorNeeds; i++) {
+	    dataSectors[i] = freeMap->FindAndSet();
+        // since we checked that there was enough free space,
+	    // we expect this to succeed
+	    ASSERT(dataSectors[i] >= 0);
     }
+
+
+    if(offset > 0) {
+        indexNeeds  = divRoundUp(offset, NumMaxSect);       // calculate how many indirect index do we need
+        indirectSize = indexNeeds <= NumIndirect ? indexNeeds : NumIndirect;
+        sectorNeeds = offset; // calculate how many sector we need to allocate
+        for(int i = 0; i < indirectSize; i ++) {
+            int sectorNum;
+
+            dataSectors[NumDirect + i] = freeMap->FindAndSet();
+	        ASSERT(dataSectors[NumDirect + i] >= 0);
+
+            
+            sectorNum = NumMaxSect > offset ? offset : NumMaxSect;
+            offset -= sectorNum;
+            ASSERT(offset >= 0);
+
+            indirectTable[i] = new FileHeader();
+            indirectTable[i]->AllocateIndirect(freeMap, sectorNum);
+        }
+    
+    }
+
     return TRUE;
 }
+
+bool
+FileHeader::AllocateIndirect(PersistentBitmap *freeMap, int sectorNum)
+{
+    if (freeMap->NumClear() < sectorNum)
+	return FALSE;		// not enough space
+    
+    numBytes = sectorNum * SectorSize;
+    numSectors = sectorNum;
+
+    for(int i = 0; i < sectorNum; i ++) {
+        dataSectors[i] = freeMap->FindAndSet();
+
+        ASSERT(dataSectors[i] >= 0);
+    }
+
+}
+
 
 //----------------------------------------------------------------------
 // FileHeader::Deallocate
@@ -110,12 +173,19 @@ void
 FileHeader::FetchFrom(int sector)
 {
     kernel->synchDisk->ReadSector(sector, (char *)this);
-	
-	/*
-		MP4 Hint:
-		After you add some in-core informations, you will need to rebuild the header's structure
-	*/
-	
+    
+    for(int i = 0; i < NumIndirect; i++) {
+        if(dataSectors[NumDirect + i] == -1) break;
+        
+        indirectTable[i] = new FileHeader();
+        indirectTable[i]->FetchFromIndirect(dataSectors[NumDirect + i]);
+    }
+}
+
+void
+FileHeader::FetchFromIndirect(int sector)
+{
+    kernel->synchDisk->ReadSector(sector, (char *)this);
 }
 
 //----------------------------------------------------------------------
@@ -128,17 +198,22 @@ FileHeader::FetchFrom(int sector)
 void
 FileHeader::WriteBack(int sector)
 {
-    kernel->synchDisk->WriteSector(sector, (char *)this); 
-	
-	/*
-		MP4 Hint:
-		After you add some in-core informations, you may not want to write all fields into disk.
-		Use this instead:
-		char buf[SectorSize];
-		memcpy(buf + offset, &dataToBeWritten, sizeof(dataToBeWritten));
-		...
-	*/
-	
+    char buf[SectorSize];
+    memcpy(&buf, (char *)this, sizeof(buf));
+    kernel->synchDisk->WriteSector(sector, buf); 
+    for(int i = 0; i < NumIndirect; i ++) {
+        if(indirectTable[i]) {
+            indirectTable[i]->WriteBackIndirect(dataSectors[i + NumDirect]); 
+        }
+    }
+}
+
+void
+FileHeader::WriteBackIndirect(int sector)
+{
+    char buf[SectorSize];
+    memcpy(&buf, (char *)this, sizeof(buf));
+    kernel->synchDisk->WriteSector(sector, buf); 
 }
 
 //----------------------------------------------------------------------
@@ -154,7 +229,17 @@ FileHeader::WriteBack(int sector)
 int
 FileHeader::ByteToSector(int offset)
 {
-    return(dataSectors[offset / SectorSize]);
+    int position = offset / SectorSize;
+    if(position < NumDirect)
+        return(dataSectors[position]);
+    
+    position -= NumDirect;
+    
+    if(position >= 0) {
+        int index = position / NumMaxSect;
+        int p = position % NumMaxSect;
+        return(indirectTable[index]->dataSectors[p]);
+    }
 }
 
 //----------------------------------------------------------------------
@@ -181,10 +266,12 @@ FileHeader::Print()
     char *data = new char[SectorSize];
 
     printf("FileHeader contents.  File size: %d.  File blocks:\n", numBytes);
-    for (i = 0; i < numSectors; i++)
+    //for (i = 0; i < numSectors; i++)
+    for (i = 0; i < 16; i++)
 	printf("%d ", dataSectors[i]);
     printf("\nFile contents:\n");
-    for (i = k = 0; i < numSectors; i++) {
+    //for (i = k = 0; i < numSectors; i++) {
+    for (i = k = 0; i < 16; i++) {
 	kernel->synchDisk->ReadSector(dataSectors[i], data);
         for (j = 0; (j < SectorSize) && (k < numBytes); j++, k++) {
 	    if ('\040' <= data[j] && data[j] <= '\176')   // isprint(data[j])

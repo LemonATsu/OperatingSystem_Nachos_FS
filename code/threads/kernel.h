@@ -51,6 +51,11 @@ class Kernel {
 	#ifdef FILESYS_STUB	
 	int CreateFile(char* filename); // fileSystem call
 	#endif
+	int CreateFile(char* filename, int size); // fileSystem call
+    OpenFileId OpenFile(char *filename);
+    int WriteToFileId(char *buffer, int size, OpenFileId id);
+    int ReadFromFileId(char *buffer, int size, OpenFileId id);
+    int CloseFileId(OpenFileId id);
 
 // These are public for notational convenience; really, 
 // they're global variables used everywhere.

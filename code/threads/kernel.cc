@@ -336,3 +336,28 @@ int Kernel::CreateFile(char *filename)
 }
 #endif
 
+
+int Kernel::CreateFile(char *filename, int size)
+{
+	return fileSystem->Create(filename, size);
+}
+
+OpenFileId Kernel::OpenFile(char *filename)
+{
+    return fileSystem->OpenFileForId(filename);
+}
+
+int Kernel::WriteToFileId(char *buffer, int size, OpenFileId id)
+{
+    return fileSystem->WriteToFileId(buffer, size, id);
+}
+
+int Kernel::ReadFromFileId(char *buffer, int size, OpenFileId id)
+{
+    return fileSystem->ReadFromFileId(buffer, size, id);
+}
+
+int Kernel::CloseFileId(OpenFileId id)
+{
+    return fileSystem->CloseFileId(id);
+}

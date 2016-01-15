@@ -17,8 +17,14 @@
 #include "disk.h"
 #include "pbitmap.h"
 
-#define NumDirect 	((SectorSize - 2 * sizeof(int)) / sizeof(int))
+//#define NumDirect 	((SectorSize - 2 * sizeof(int)) / sizeof(int))
 #define MaxFileSize 	(NumDirect * SectorSize)
+#define NumIndex    ((SectorSize - 1 * sizeof(int)) / sizeof(int))
+#define NumDirect 16
+#define NumIndirect 8
+#define NumMaxSect 30
+#define NumTripleIndirect 6
+
 
 // The following class defines the Nachos "file header" (in UNIX terms,  
 // the "i-node"), describing where on disk to find all of the data in the file.
@@ -35,20 +41,26 @@
 // by allocating blocks for the file (if it is a new file), or by
 // reading it from disk.
 
+enum HeaderType {file_type, indirect_type};
+
 class FileHeader {
   public:
 	// MP4 mod tag
 	FileHeader(); // dummy constructor to keep valgrind happy
+	FileHeader(HeaderType type); // dummy constructor to keep valgrind happy
 	~FileHeader();
 	
     bool Allocate(PersistentBitmap *bitMap, int fileSize);// Initialize a file header, 
 						//  including allocating space 
 						//  on disk for the file data
+    bool AllocateIndirect(PersistentBitmap *bitMap, int sectorNum);// Initialize a file header, 
     void Deallocate(PersistentBitmap *bitMap);  // De-allocate this file's 
 						//  data blocks
 
     void FetchFrom(int sectorNumber); 	// Initialize file header from disk
+    void FetchFromIndirect(int sector);
     void WriteBack(int sectorNumber); 	// Write modifications to file header
+    void WriteBackIndirect(int sectorNumber); 	// Write modifications to file header
 					//  back to disk
 
     int ByteToSector(int offset);	// Convert a byte offset into the file
@@ -76,11 +88,13 @@ class FileHeader {
 		In-core part - none
 		
 	*/
-	
     int numBytes;			// Number of bytes in the file
     int numSectors;			// Number of data sectors in the file
-    int dataSectors[NumDirect];		// Disk sector numbers for each data 
+    int dataSectors[NumMaxSect];		// Disk sector numbers for each data 
 					// block in the file
+
+    FileHeader *indirectTable[NumIndirect];
+    FileHeader *tripleIndirectTable[NumTripleIndirect];
 };
 
 #endif // FILEHDR_H

@@ -139,8 +139,10 @@ Print(char *name)
     
     buffer = new char[TransferSize];
     while ((amountRead = openFile->Read(buffer, TransferSize)) > 0)
+    {
         for (i = 0; i < amountRead; i++)
             printf("%c", buffer[i]);
+    }
     delete [] buffer;
 
     delete openFile;            // close the Nachos file

@@ -36,7 +36,7 @@
 #include "copyright.h"
 #include "list.h"
 #include "callback.h"
-
+typedef int OpenFileId;
 // Interrupts can be disabled (IntOff) or enabled (IntOn)
 enum IntStatus { IntOff, IntOn };
 
@@ -107,6 +107,12 @@ class Interrupt {
         			// idle, kernel, user
 
     void DumpState();		// Print interrupt state
+	int CreateFile(char *filename, int size);
+    OpenFileId OpenFile(char *filename);
+    int WriteToFileId(char *buffer, int size, OpenFileId id);
+    int ReadFromFileId(char *buffer, int size, OpenFileId id);
+    int CloseFileId(OpenFileId id);
+
     
 
     // NOTE: the following are internal to the hardware simulation code.
