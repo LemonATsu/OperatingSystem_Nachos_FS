@@ -62,9 +62,9 @@
 // supports extensible files, the directory size sets the maximum number 
 // of files that can be loaded onto the disk.
 #define FreeMapFileSize 	(NumSectors / BitsInByte)
-#define NumDirEntries 		64
+#define NumDirEntries 		64  //to support (3)
 #define DirectoryFileSize 	(sizeof(DirectoryEntry) * NumDirEntries)
-
+#define MAX_PATH_LEN 255
 //----------------------------------------------------------------------
 // FileSystem::FileSystem
 // 	Initialize the file system.  If format = TRUE, the disk has
@@ -181,43 +181,66 @@ FileSystem::~FileSystem()
 //----------------------------------------------------------------------
 
 int
-FileSystem::Create(char *name, int initialSize)
+FileSystem::Create(char *name, int initialSize, bool isDir)
 {
-    Directory *directory;
+    Directory *rootDirectory;
+    Directory *targetDirectory;
+    OpenFile *targetFile;
     PersistentBitmap *freeMap;
     FileHeader *hdr;
-    int sector;
-    int success;
-
+    char BasedPath[MAX_PATH_LEN + 1];
+    char act_name[10];
+    int tarDir_sector;
+    int success, sector;
+    int size = initialSize;
     DEBUG(dbgFile, "Creating file " << name << " size " << initialSize);
 
-    directory = new Directory(NumDirEntries);
-    directory->FetchFrom(directoryFile);
-    if (directory->Find(name) != -1)
+
+    if(isDir) size = DirectoryFileSize;
+
+    rootDirectory = new Directory(NumDirEntries);
+    rootDirectory->FetchFrom(directoryFile);
+    if (rootDirectory->SearchPath(name) != -1)
       success = 0;			// file is already in directory
     else {	
+        ExtractBasePath(BasedPath, act_name, name);
+        cout << act_name << endl;
+        
+        if(BasedPath[0] != '\0') {
+            tarDir_sector = rootDirectory->SearchPath(BasedPath);
+            targetFile = new OpenFile(tarDir_sector);
+            targetDirectory = new Directory(NumDirEntries);
+            targetDirectory->FetchFrom(targetFile);
+        } else {
+            tarDir_sector = DirectorySector;
+            targetDirectory = rootDirectory;
+            targetFile = directoryFile;
+        }
+
+
+
         freeMap = new PersistentBitmap(freeMapFile,NumSectors);
         sector = freeMap->FindAndSet();	// find a sector to hold the file header
     	if (sector == -1) 		
             success = 0;		// no free block for file header 
-        else if (!directory->Add(name, sector))
+        else if (!targetDirectory->Add(act_name, sector, isDir))
             success = 0;	// no space in directory
 	else {
     	    hdr = new FileHeader;
-	    if (!hdr->Allocate(freeMap, initialSize))
+	    if (!hdr->Allocate(freeMap, size))
             	success = FALSE;	// no space on disk for data
 	    else {	
 	    	success = 1;
 		// everthing worked, flush all changes back to disk
     	    	hdr->WriteBack(sector); 		
-    	    	directory->WriteBack(directoryFile);
+    	    	targetDirectory->WriteBack(targetFile);
     	    	freeMap->WriteBack(freeMapFile);
 	    }
             delete hdr;
 	}
         delete freeMap;
     }
-    delete directory;
+    delete targetDirectory;
     return success;
 }
 
@@ -237,11 +260,11 @@ FileSystem::Open(char *name)
     Directory *directory = new Directory(NumDirEntries);
     OpenFile *openFile = NULL;
     int sector;
-    int fd;
     
     DEBUG(dbgFile, "Opening file" << name);
     directory->FetchFrom(directoryFile);
-    sector = directory->Find(name); 
+    //sector = directory->Find(name); 
+    sector = directory->SearchPath(name);
     if (sector >= 0) 		
 	openFile = new OpenFile(sector);	// name was found in directory 
     delete directory;
@@ -272,7 +295,8 @@ FileSystem::Remove(char *name)
     
     directory = new Directory(NumDirEntries);
     directory->FetchFrom(directoryFile);
-    sector = directory->Find(name);
+    //sector = directory->Find(name);
+    sector = directory->SearchPath(name);
     if (sector == -1) {
        delete directory;
        return FALSE;			 // file not found 
@@ -300,13 +324,26 @@ FileSystem::Remove(char *name)
 //----------------------------------------------------------------------
 
 void
-FileSystem::List()
+FileSystem::List(char *path)
 {
-    Directory *directory = new Directory(NumDirEntries);
+    Directory *rootDirectory = new Directory(NumDirEntries);
+    int sector;
+    rootDirectory->FetchFrom(directoryFile);
+    sector = rootDirectory->SearchPath(path);
 
-    directory->FetchFrom(directoryFile);
-    directory->List();
-    delete directory;
+    
+    if(sector == DirectorySector)
+        rootDirectory->List();
+    else {
+        OpenFile* file = new OpenFile(sector);
+        Directory *targetDirectory = new Directory(NumDirEntries);
+        targetDirectory->FetchFrom(file);
+        targetDirectory->List();
+        delete targetDirectory;
+    }
+
+
+    delete rootDirectory;
 }
 
 //----------------------------------------------------------------------
@@ -388,5 +425,25 @@ FileSystem::CloseFileId(OpenFileId id)
     
     return 1;
 }
+
+void
+FileSystem::ExtractBasePath(char *base, char *name, char *abs)
+{
+    int mark;
+    int i, j = 0;
+    for(i = 0; abs[i]; i++)
+        if(abs[i] == '/')
+            mark = i;
+
+    for(i = 0; i < mark; i ++)
+        base[i] = abs[i];
+    base[i] = '\0';
+
+    for(i = mark; abs[i]; i++)
+        name[j++] = abs[i];
+    name[j] = '\0';
+
+}
+
 
 #endif // FILESYS_STUB
