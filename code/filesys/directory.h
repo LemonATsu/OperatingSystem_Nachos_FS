@@ -36,6 +36,8 @@ class DirectoryEntry {
 					//   FileHeader for this file 
     char name[FileNameMaxLen + 1];	// Text name for file, with +1 for 
 					// the trailing '\0'
+
+    bool isDir;
 };
 
 // The following class defines a UNIX-like "directory".  Each entry in
@@ -66,7 +68,7 @@ class Directory {
 
     bool Remove(char *name);		// Remove a file from the directory
 
-    void List();			// Print the names of all the files
+    void List(bool recur);			// Print the names of all the files
 					//  in the directory
     void Print();			// Verbose print of the contents
 					//  of the directory -- all the file

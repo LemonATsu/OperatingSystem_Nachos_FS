@@ -22,6 +22,7 @@
 #include "copyright.h"
 #include "utility.h"
 #include "filehdr.h"
+#include "filesys.h"
 #include "directory.h"
 
 #define DirectorySector 1
@@ -156,7 +157,7 @@ Directory::SearchPath(char *name)
     path[j] = '\0';
     
     if(sector == -1) return sector;
-    directory = new Directory(64);
+    directory = new Directory(DirectoryFileSize);
     OpenFile* dir = new OpenFile(sector);
     directory->FetchFrom(dir);
     return directory->SearchPath(path);
@@ -184,6 +185,7 @@ Directory::Add(char *name, int newSector, bool isDir)
             table[i].inUse = TRUE;
             strncpy(table[i].name, name, FileNameMaxLen); 
             table[i].sector = newSector;
+            table[i].isDir = isDir;
         return TRUE;
 	}
     return FALSE;	// no space.  Fix when we have extensible files.
@@ -214,11 +216,18 @@ Directory::Remove(char *name)
 //----------------------------------------------------------------------
 
 void
-Directory::List()
+Directory::List(bool recur)
 {
    for (int i = 0; i < tableSize; i++)
-	if (table[i].inUse)
+	if (table[i].inUse) {
 	    printf("%s\n", table[i].name);
+        if(recur && table[i].isDir) {
+            Directory *directory = new Directory(DirectoryFileSize);
+            OpenFile *file = new OpenFile(table[i].sector);
+            directory->FetchFrom(file);
+            directory->List(recur);
+        }    
+    }
 }
 
 //----------------------------------------------------------------------
