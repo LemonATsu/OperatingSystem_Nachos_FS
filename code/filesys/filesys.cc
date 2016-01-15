@@ -54,17 +54,6 @@
 
 // Sectors containing the file headers for the bitmap of free sectors,
 // and the directory of files.  These file headers are placed in well-known 
-// sectors, so that they can be located on boot-up.
-#define FreeMapSector 		0
-#define DirectorySector 	1
-
-// Initial file sizes for the bitmap and directory; until the file system
-// supports extensible files, the directory size sets the maximum number 
-// of files that can be loaded onto the disk.
-#define FreeMapFileSize 	(NumSectors / BitsInByte)
-#define NumDirEntries 		64  //to support (3)
-#define DirectoryFileSize 	(sizeof(DirectoryEntry) * NumDirEntries)
-#define MAX_PATH_LEN 255
 //----------------------------------------------------------------------
 // FileSystem::FileSystem
 // 	Initialize the file system.  If format = TRUE, the disk has
@@ -341,17 +330,33 @@ FileSystem::List(char *path)
 
     
     if(sector == DirectorySector)
-        rootDirectory->List();
+        rootDirectory->List(false);
     else {
         OpenFile* file = new OpenFile(sector);
         Directory *targetDirectory = new Directory(NumDirEntries);
         targetDirectory->FetchFrom(file);
-        targetDirectory->List();
+        targetDirectory->List(false);
         delete targetDirectory;
     }
 
 
     delete rootDirectory;
+}
+
+
+void
+FileSystem::RecursiveList(char *path)
+{
+    Directory *rootDirectory = new Directory(NumDirEntries);
+    Directory *targetDirectory = new Directory(NumDirEntries);
+    int sector;
+    rootDirectory->FetchFrom(directoryFile);
+    sector = rootDirectory->SearchPath(path);
+
+    OpenFile* file = new OpenFile(sector);
+    targetDirectory->FetchFrom(file);
+    targetDirectory->List(true);
+
 }
 
 //----------------------------------------------------------------------

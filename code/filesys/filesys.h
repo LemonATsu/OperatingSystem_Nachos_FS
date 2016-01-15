@@ -39,6 +39,18 @@
 typedef int OpenFileId;
 #define MAX_SYS_OPENF 20
 #define MAX_FILENAME_LENGTH 255
+// sectors, so that they can be located on boot-up.
+#define FreeMapSector 		0
+#define DirectorySector 	1
+
+// Initial file sizes for the bitmap and directory; until the file system
+// supports extensible files, the directory size sets the maximum number 
+// of files that can be loaded onto the disk.
+#define FreeMapFileSize 	(NumSectors / BitsInByte)
+#define NumDirEntries 		64  //to support (3)
+#define DirectoryFileSize 	(sizeof(DirectoryEntry) * NumDirEntries)
+#define MAX_PATH_LEN 255
+
 #ifdef FILESYS_STUB 		// Temporarily implement file system calls as 
 				// calls to UNIX, until the real file system
 				// implementation is available
@@ -87,6 +99,7 @@ class FileSystem {
     bool Remove(char *name);  		// Delete a file (UNIX unlink)
 
     void List(char *path);			// List all the files in the file system
+    void RecursiveList(char *path);			// List all the files in the file system
 
     void Print();			// List all the files and their contents
     OpenFileId OpenFileForId(char *name);
