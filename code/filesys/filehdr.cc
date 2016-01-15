@@ -156,10 +156,26 @@ FileHeader::AllocateIndirect(PersistentBitmap *freeMap, int sectorNum)
 void 
 FileHeader::Deallocate(PersistentBitmap *freeMap)
 {
-    for (int i = 0; i < numSectors; i++) {
+    /*for (int i = 0; i < numSectors; i++) {
 	ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
 	freeMap->Clear((int) dataSectors[i]);
     }
+    */
+
+    for(int i = 0; i < NumMaxSect; i++) {
+        if(indirectTable[i]) {
+            for(int j = 0; j < indirectTable[i]->numSectors; j) {
+                ASSERT(freeMap->Test((int) indirectTable[i]->dataSectors[i]));
+                freeMap->Clear((int) indirectTable[i]->dataSectors[i]);
+            }
+        }
+        if(dataSectors[i] != -1) {
+	        ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
+	        freeMap->Clear((int) dataSectors[i]);
+        }
+    }
+
+
 }
 
 //----------------------------------------------------------------------
