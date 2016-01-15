@@ -325,7 +325,10 @@ main(int argc, char **argv)
 		kernel->fileSystem->Print();
     }
     if (dirListFlag) {
-		kernel->fileSystem->List(listDirectoryName);
+		if(!recursiveListFlag)
+            kernel->fileSystem->List(listDirectoryName);
+        else
+            kernel->fileSystem->RecursiveList(listDirectoryName);
     }
 	if (mkdirFlag) {
 		// MP4 mod tag
