@@ -73,8 +73,8 @@ FileSystem::FileSystem(bool format)
     if (format) {
         PersistentBitmap *freeMap = new PersistentBitmap(NumSectors);
         Directory *directory = new Directory(NumDirEntries);
-		FileHeader *mapHdr = new FileHeader();
-		FileHeader *dirHdr = new FileHeader();
+		FileHeader *mapHdr = new FileHeader;
+		FileHeader *dirHdr = new FileHeader;
 
         DEBUG(dbgFile, "Formatting the file system.");
 
@@ -172,7 +172,7 @@ FileSystem::~FileSystem()
 int
 FileSystem::Create(char *name, int initialSize, bool isDir)
 {
-    Directory *rootDirectory;
+    Directory *rootDirectory = new Directory(NumDirEntries);
     Directory *targetDirectory;
     OpenFile *targetFile;
     PersistentBitmap *freeMap;
@@ -186,7 +186,6 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
 
     if(isDir) size = DirectoryFileSize;
 
-    rootDirectory = new Directory(NumDirEntries);
     rootDirectory->FetchFrom(directoryFile);
     
     ExtractBasePath(BasedPath, act_name, name);
@@ -201,9 +200,10 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
     targetDirectory->FetchFrom(targetFile);
     
     
-    if (targetDirectory->Find(act_name) != -1)
+    if (targetDirectory->Find(act_name) != -1) {
       success = 0;			// file is already in directory
-    else {	
+        cout << "!NO!" << endl;
+    }else {	
 
         
 
@@ -224,18 +224,19 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
                     hdr->WriteBack(sector); 		
     	    	    targetDirectory->WriteBack(targetFile);
     	    	    freeMap->WriteBack(freeMapFile);
-                /*if(isDir) {
+                if(isDir) {
+                    cout << "is dir " << endl;
                     targetFile = new OpenFile(sector);
                     targetDirectory = new Directory(NumDirEntries);
-                    targetDirectory->FetchFrom(targetFile);
-                }*/
+                    targetDirectory->WriteBack(targetFile);
+                }
 	        }
             delete hdr;
 	    }
         delete freeMap;
     }
 
-
+    delete rootDirectory;
     delete targetFile;
     delete targetDirectory;
     return success;
@@ -262,6 +263,7 @@ FileSystem::Open(char *name)
     directory->FetchFrom(directoryFile);
     //sector = directory->Find(name); 
     sector = directory->SearchPath(name);
+    cout << "Open at " << sector << endl;
     if (sector >= 0) 		
 	openFile = new OpenFile(sector);	// name was found in directory 
     delete directory;
