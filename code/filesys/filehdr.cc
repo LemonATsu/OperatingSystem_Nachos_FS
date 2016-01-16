@@ -86,7 +86,7 @@ FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize)
     int offset; // # of Sector left after allocate to direct index.
     int indexNeeds;
     int sectorNeeds;
-
+   
     numBytes = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);
     
@@ -110,7 +110,7 @@ FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize)
         sectorNeeds = offset; // calculate how many sector we need to allocate
         for(int i = 0; i < indirectSize; i ++) {
             int sectorNum;
-
+            bool result;
             dataSectors[NumDirect + i] = freeMap->FindAndSet();
 	        ASSERT(dataSectors[NumDirect + i] >= 0);
 
@@ -120,7 +120,8 @@ FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize)
             ASSERT(offset >= 0);
 
             indirectTable[i] = new FileHeader();
-            indirectTable[i]->AllocateIndirect(freeMap, sectorNum);
+            result = indirectTable[i]->AllocateIndirect(freeMap, sectorNum);
+            if(!result) return result;
         }
     
     }
@@ -142,7 +143,7 @@ FileHeader::AllocateIndirect(PersistentBitmap *freeMap, int sectorNum)
 
         ASSERT(dataSectors[i] >= 0);
     }
-
+    return TRUE;
 }
 
 
@@ -159,9 +160,8 @@ FileHeader::Deallocate(PersistentBitmap *freeMap)
     /*for (int i = 0; i < numSectors; i++) {
 	ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
 	freeMap->Clear((int) dataSectors[i]);
-    }
-    */
-
+    }*/
+    
     for(int i = 0; i < NumMaxSect; i++) {
         if(indirectTable[i]) {
             for(int j = 0; j < indirectTable[i]->numSectors; j) {
@@ -215,8 +215,9 @@ void
 FileHeader::WriteBack(int sector)
 {
     char buf[SectorSize];
-    memcpy(&buf, (char *)this, sizeof(buf));
-    kernel->synchDisk->WriteSector(sector, buf); 
+    //memcpy(&buf, (char *)this, sizeof(buf));
+    //kernel->synchDisk->WriteSector(sector, buf); 
+    kernel->synchDisk->WriteSector(sector, (char*) this); 
     for(int i = 0; i < NumIndirect; i ++) {
         if(indirectTable[i]) {
             indirectTable[i]->WriteBackIndirect(dataSectors[i + NumDirect]); 
@@ -229,7 +230,8 @@ FileHeader::WriteBackIndirect(int sector)
 {
     char buf[SectorSize];
     memcpy(&buf, (char *)this, sizeof(buf));
-    kernel->synchDisk->WriteSector(sector, buf); 
+    //kernel->synchDisk->WriteSector(sector, buf); 
+    kernel->synchDisk->WriteSector(sector, (char*) this); 
 }
 
 //----------------------------------------------------------------------
