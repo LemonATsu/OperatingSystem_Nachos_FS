@@ -229,10 +229,11 @@ void
 Directory::List(char *from, bool recur)
 {
    bool free = false;   
+   
    if(from == NULL) {
+       // It's from root, allocate for it
        from = new char[MAX_PATH_LEN];
        from[0] = '\0';
-       printf("NEW\n");
        free = true;
    }
    
@@ -240,6 +241,8 @@ Directory::List(char *from, bool recur)
 	if (table[i].inUse) {
         printf("%s", from);
 	    printf("%s\n", table[i].name);
+
+        // recursively traverse
         if(recur && table[i].isDir) {
             char path[MAX_PATH_LEN];
             strncpy(path, from, MAX_PATH_LEN);
