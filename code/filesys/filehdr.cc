@@ -83,8 +83,8 @@ bool
 FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize)
 { 
     int indirectSize;
-    int offset; // # of Sector left after allocate to direct index.
-    int indexNeeds;
+    int offset;     // # of Sector left after allocate to direct index.
+    int indexNeeds; // # of indirect table do we need
     int sectorNeeds;
    
     numBytes = fileSize;
@@ -93,8 +93,10 @@ FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize)
     
     if (freeMap->NumClear() < numSectors)
 	return FALSE;		// not enough space
-    sectorNeeds = numSectors <= NumDirect ? numSectors : NumDirect;
-    offset = numSectors - sectorNeeds;
+    
+    sectorNeeds = numSectors <= NumDirect ? numSectors : NumDirect; // Calculate the # of sectors for direct table
+    offset = numSectors - sectorNeeds; // calculate how many sector do wee still need after allocate direct level
+    
     // allocate direct level datasector
     for (int i = 0; i < sectorNeeds; i++) {
 	    dataSectors[i] = freeMap->FindAndSet();
@@ -111,7 +113,7 @@ FileHeader::Allocate(PersistentBitmap *freeMap, int fileSize)
         for(int i = 0; i < indirectSize; i ++) {
             int sectorNum;
             bool result;
-            dataSectors[NumDirect + i] = freeMap->FindAndSet();
+            dataSectors[NumDirect + i] = freeMap->FindAndSet(); // get sector to store info for indirect table
 	        ASSERT(dataSectors[NumDirect + i] >= 0);
 
             
@@ -216,7 +218,6 @@ FileHeader::WriteBack(int sector)
 {
     char buf[SectorSize];
     memcpy(&buf, (char *)this, sizeof(buf));
-    //kernel->synchDisk->WriteSector(sector, buf); 
     kernel->synchDisk->WriteSector(sector, buf); 
     for(int i = 0; i < NumIndirect; i ++) {
         if(indirectTable[i]) {
@@ -230,7 +231,6 @@ FileHeader::WriteBackIndirect(int sector)
 {
     char buf[SectorSize];
     memcpy(&buf, (char *)this, sizeof(buf));
-    //kernel->synchDisk->WriteSector(sector, buf); 
     kernel->synchDisk->WriteSector(sector, buf); 
 }
 
