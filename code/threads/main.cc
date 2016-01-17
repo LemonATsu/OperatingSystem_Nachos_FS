@@ -314,7 +314,10 @@ main(int argc, char **argv)
 
 #ifndef FILESYS_STUB
     if (removeFileName != NULL) {
-		kernel->fileSystem->Remove(removeFileName);
+		if(!recursiveRemoveFlag)
+            kernel->fileSystem->Remove(removeFileName);
+        else
+            kernel->fileSystem->RecursiveRemove(removeFileName);
     }
     if (copyUnixFileName != NULL && copyNachosFileName != NULL) {
 		Copy(copyUnixFileName,copyNachosFileName);

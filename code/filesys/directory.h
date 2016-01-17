@@ -73,7 +73,7 @@ class Directory {
     void Print();			// Verbose print of the contents
 					//  of the directory -- all the file
 					//  names and their contents.
-
+    bool Destroy(PersistentBitmap *freeMap, char *path, OpenFile *file);
   private:
   
 	/*

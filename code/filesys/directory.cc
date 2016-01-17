@@ -282,3 +282,42 @@ Directory::Print()
     printf("\n");
     delete hdr;
 }
+
+bool
+Directory::Destroy(PersistentBitmap *freeMap, char *path, OpenFile *file)
+{
+    FileHeader *fileHdr;
+
+    // Loop through table to remove all file.
+    for(int i = 0; i < tableSize; i++) {
+        if(table[i].inUse) {
+   
+            if(table[i].isDir) {
+                // It is a directory, remove it recursively
+                char tarPath[MAX_PATH_LEN + 1];
+                OpenFile *tarDir = new OpenFile(table[i].sector);
+
+                strncpy(tarPath, path, MAX_PATH_LEN);
+                strncat(tarPath, table[i].name, FileNameMaxLen);
+                
+                // prevent leak
+                delete tarDir;
+            }
+
+            // remove file from table and idsk.
+            fileHdr = new FileHeader;
+            fileHdr->FetchFrom(table[i].sector);
+            fileHdr->Deallocate(freeMap);
+            freeMap->Clear(table[i].sector);
+            Remove(table[i].name);
+           
+            delete fileHdr;
+        }
+    }
+    
+    // write back all change in the directory
+    WriteBack(file);
+    return TRUE;
+}
+
+

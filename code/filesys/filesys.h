@@ -50,6 +50,7 @@ typedef int OpenFileId;
 #define NumDirEntries 		64  //to support (3)
 #define DirectoryFileSize 	(sizeof(DirectoryEntry) * NumDirEntries)
 #define MAX_PATH_LEN 255
+#define OPENDIR(dir,opf)  dir=new Directory(NumDirEntries);dir->FetchFrom(opf)
 
 #ifdef FILESYS_STUB 		// Temporarily implement file system calls as 
 				// calls to UNIX, until the real file system
@@ -97,6 +98,7 @@ class FileSystem {
     OpenFile* Open(char *name); 	// Open a file (UNIX open)
 
     bool Remove(char *name);  		// Delete a file (UNIX unlink)
+    bool RecursiveRemove(char *path);  		// Delete a file (UNIX unlink)
 
     void List(char *path, bool recur);			// List all the files in the file system
     void RecursiveList(char *path);			// List all the files in the file system

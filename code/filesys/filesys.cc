@@ -302,8 +302,6 @@ FileSystem::Remove(char *name)
     ExtractBasePath(BasePath, filename, name);
     sector = directory->SearchPath(BasePath, 0);
 
-    cout << BasePath << endl;
-    cout << filename << endl; 
     delete directory;
 
     if (sector == -1) {
@@ -339,6 +337,72 @@ FileSystem::Remove(char *name)
     delete freeMap;
     return TRUE;
 } 
+
+
+bool
+FileSystem::RecursiveRemove(char *path)
+{
+    Directory *baseDirectory;
+    Directory *targetDirectory;
+    PersistentBitmap *freeMap;
+    FileHeader *fileHdr;
+    OpenFile *baseDir;
+    OpenFile *tarDir;
+    char BasePath[MAX_PATH_LEN + 1];
+    char filename[FileNameMaxLen + 1];
+    int sector;
+
+    cout << "Recursive remove" << endl;
+    OPENDIR(baseDirectory, directoryFile);
+    ExtractBasePath(BasePath, filename, path);
+    sector = baseDirectory->SearchPath(BasePath, 0); // find the base of target directory
+
+    delete baseDirectory;
+
+    cout << sector << endl;
+    if(sector == -1) {
+        return FALSE;   
+    }
+    
+
+    baseDir = new OpenFile(sector);
+    OPENDIR(baseDirectory, baseDir);
+    sector = baseDirectory->Find(filename); // search target in its base.
+
+
+    if(sector == -1 || sector == DirectorySector) {
+        delete baseDir;
+        delete baseDirectory;
+        return FALSE;
+    }
+    
+    tarDir = new OpenFile(sector); // open target directory
+    freeMap = new PersistentBitmap(freeMapFile,NumSectors);
+    OPENDIR(targetDirectory, tarDir);
+    
+    cout << "Destroy " << path << endl;
+    targetDirectory->Destroy(freeMap, path, tarDir);  // destroy the target directory
+
+
+    // remove target directory from its base directory
+    fileHdr = new FileHeader;
+    fileHdr->FetchFrom(sector);
+    fileHdr->Deallocate(freeMap);  		// remove data blocks
+    freeMap->Clear(sector);			// remove header block
+    baseDirectory->Remove(filename);
+    
+    freeMap->WriteBack(freeMapFile);		// flush to disk
+    baseDirectory->WriteBack(baseDir);        // flush to disk
+
+    delete tarDir;
+    delete baseDir;
+    delete targetDirectory;
+    delete baseDirectory;
+    delete fileHdr;
+    delete freeMap;
+
+}
+
 
 //----------------------------------------------------------------------
 // FileSystem::List
