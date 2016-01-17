@@ -289,18 +289,39 @@ bool
 FileSystem::Remove(char *name)
 { 
     Directory *directory;
+    Directory *targetDirectory;
+    OpenFile  * tarDir;
+    char BasePath[MAX_PATH_LEN + 1];
+    char filename[FileNameMaxLen + 1];
     PersistentBitmap *freeMap;
     FileHeader *fileHdr;
     int sector;
-    
+   
     directory = new Directory(NumDirEntries);
     directory->FetchFrom(directoryFile);
-    //sector = directory->Find(name);
-    sector = directory->SearchPath(name, 0);
+    ExtractBasePath(BasePath, filename, name);
+    sector = directory->SearchPath(BasePath, 0);
+
+    cout << BasePath << endl;
+    cout << filename << endl; 
+    delete directory;
+
     if (sector == -1) {
-       delete directory;
-       return FALSE;			 // file not found 
+       return FALSE;			 // file directory not found 
     }
+    
+    tarDir = new OpenFile(sector);
+    directory = new Directory(NumDirEntries);
+    directory->FetchFrom(tarDir);
+
+    sector = directory->Find(filename);
+    
+    if (sector == -1) {
+        delete directory;
+        delete tarDir;
+        return FALSE;
+    }
+    
     fileHdr = new FileHeader;
     fileHdr->FetchFrom(sector);
 
@@ -308,12 +329,13 @@ FileSystem::Remove(char *name)
 
     fileHdr->Deallocate(freeMap);  		// remove data blocks
     freeMap->Clear(sector);			// remove header block
-    directory->Remove(name);
+    directory->Remove(filename);
 
     freeMap->WriteBack(freeMapFile);		// flush to disk
-    directory->WriteBack(directoryFile);        // flush to disk
+    directory->WriteBack(tarDir);        // flush to disk
     delete fileHdr;
     delete directory;
+    delete tarDir;
     delete freeMap;
     return TRUE;
 } 
