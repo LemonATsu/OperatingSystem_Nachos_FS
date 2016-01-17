@@ -226,18 +226,36 @@ Directory::Remove(char *name)
 //----------------------------------------------------------------------
 
 void
-Directory::List(bool recur)
+Directory::List(char *from, bool recur)
 {
+   bool free = false;   
+   if(from == NULL) {
+       from = new char[MAX_PATH_LEN];
+       from[0] = '\0';
+       printf("NEW\n");
+       free = true;
+   }
+   
    for (int i = 0; i < tableSize; i++)
 	if (table[i].inUse) {
+        printf("%s", from);
 	    printf("%s\n", table[i].name);
         if(recur && table[i].isDir) {
+            char path[MAX_PATH_LEN];
+            strncpy(path, from, MAX_PATH_LEN);
+            strncat(path, table[i].name, FileNameMaxLen);
             Directory *directory = new Directory(DirectoryFileSize);
             OpenFile *file = new OpenFile(table[i].sector);
             directory->FetchFrom(file);
-            directory->List(recur);
+            directory->List(path,recur);
+
+            delete directory;
+            delete file;
         }    
     }
+
+    if(free)
+        delete from;
 }
 
 //----------------------------------------------------------------------
