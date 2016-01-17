@@ -189,7 +189,7 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
     rootDirectory->FetchFrom(directoryFile);
     
     ExtractBasePath(BasedPath, act_name, name);
-    sector = rootDirectory->SearchPath(BasedPath);
+    sector = rootDirectory->SearchPath(BasedPath, 0);
 
     if(sector == -1) {
         return 0;
@@ -264,8 +264,8 @@ FileSystem::Open(char *name)
     DEBUG(dbgFile, "Opening file" << name);
     directory->FetchFrom(directoryFile);
     //sector = directory->Find(name); 
-    sector = directory->SearchPath(name);
-    cout << "Open at " << sector << endl;
+    sector = directory->SearchPath(name, 0);
+    
     if (sector >= 0) 		
 	openFile = new OpenFile(sector);	// name was found in directory 
     delete directory;
@@ -297,7 +297,7 @@ FileSystem::Remove(char *name)
     directory = new Directory(NumDirEntries);
     directory->FetchFrom(directoryFile);
     //sector = directory->Find(name);
-    sector = directory->SearchPath(name);
+    sector = directory->SearchPath(name, 0);
     if (sector == -1) {
        delete directory;
        return FALSE;			 // file not found 
@@ -330,7 +330,7 @@ FileSystem::List(char *path)
     Directory *rootDirectory = new Directory(NumDirEntries);
     int sector;
     rootDirectory->FetchFrom(directoryFile);
-    sector = rootDirectory->SearchPath(path);
+    sector = rootDirectory->SearchPath(path, 0);
 
     
     if(sector == DirectorySector)
@@ -355,7 +355,7 @@ FileSystem::RecursiveList(char *path)
     Directory *targetDirectory = new Directory(NumDirEntries);
     int sector;
     rootDirectory->FetchFrom(directoryFile);
-    sector = rootDirectory->SearchPath(path);
+    sector = rootDirectory->SearchPath(path, 0);
 
     OpenFile* file = new OpenFile(sector);
     targetDirectory->FetchFrom(file);
@@ -408,7 +408,7 @@ FileSystem::OpenFileForId(char *name)
 {
     int fd = 0;
     OpenFile* file = this->Open(name);
-    cout << "OPEN" << endl;
+    
     while(fd <= MAX_SYS_OPENF) {
         fd ++;
         if(!SysWideOpenFileTable[fd]) {

@@ -121,46 +121,51 @@ Directory::Find(char *name)
 }
 
 int 
-Directory::SearchPath(char *name)
+Directory::SearchPath(char *name, int offset)
 {
-    int j;
-    int i;
-    int sector = -1;
-    int flag = 0;
-    char path[FileNameMaxLen + 1];
+    int i, j;
+    int sector = -1, flag = 0; // flag to check wheter it has one more level of subdirectory
+    char filename[FileNameMaxLen + 1];
     Directory *directory;
-    for(i = 1; name[i]; i++) {
-        if(name[i] == '/') {
+    
+    ASSERT(name[offset] == '/');
+
+    // root
+    if(name[1] == '\0')
+        return DirectorySector;
+
+    // Start string checking at [offset]
+    for(i = 1; name[i + offset]; i++) {
+        // It has more level
+        if(name[i + offset] == '/') {
             for(j = 0; j < i; j++)
-                path[j] = name[j];
+                filename[j] = name[j + offset];
             
-            path[j] = '\0';
+            filename[j] = '\0';
             flag = 1;
             break;
         }
     }
         
     if(!flag) {
-        for(j = 0; name[j]; j++)
-            path[j] = name[j];
-        path[j] = '\0';
-        if(path[1] == '\0')
-            return DirectorySector; 
-        return Find(path);
-        
+        // If it's in the deepest level. 
+        for(j = 0; name[j + offset]; j++)
+            filename[j] = name[j + offset];
+        filename[j] = '\0';
+        // It's the final level. Find if it is at here.
+        return Find(filename);
     }
     
-    sector = Find(path);
+    sector = Find(filename);
 
-    for(j = 0; name[j + i]; j++)
-        path[j] = name[j + i];
-    path[j] = '\0';
+    if(sector == -1) 
+        return sector;
     
-    if(sector == -1) return sector;
+    // It's not the deepest level, so it should be a directory, recursively search 
     directory = new Directory(DirectoryFileSize);
     OpenFile* dir = new OpenFile(sector);
     directory->FetchFrom(dir);
-    return directory->SearchPath(path);
+    return directory->SearchPath(name, i + offset);
 }
 
 //----------------------------------------------------------------------
@@ -179,7 +184,7 @@ Directory::Add(char *name, int newSector, bool isDir)
 { 
     if (FindIndex(name) != -1)
 	return FALSE;
-    cout << "New file : " << name << endl;
+    
     for (int i = 0; i < tableSize; i++)
         if (!table[i].inUse) {
             table[i].inUse = TRUE;

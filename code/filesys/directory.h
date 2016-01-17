@@ -62,7 +62,7 @@ class Directory {
 
     int Find(char *name);		// Find the sector number of the 
 					// FileHeader for file: "name"
-    int SearchPath(char *name);
+    int SearchPath(char *name, int offset);
 
     bool Add(char *name, int newSector, bool isDir);  // Add a file name into the directory
 
