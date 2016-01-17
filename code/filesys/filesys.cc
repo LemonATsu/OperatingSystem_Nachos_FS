@@ -323,7 +323,7 @@ FileSystem::Remove(char *name)
 //----------------------------------------------------------------------
 
 void
-FileSystem::List(char *path)
+FileSystem::List(char *path, bool recur)
 {
     Directory *rootDirectory = new Directory(NumDirEntries);
     int sector;
@@ -332,12 +332,12 @@ FileSystem::List(char *path)
 
     
     if(sector == DirectorySector)
-        rootDirectory->List(false);
+        rootDirectory->List(NULL, recur);
     else {
         OpenFile* file = new OpenFile(sector);
         Directory *targetDirectory = new Directory(NumDirEntries);
         targetDirectory->FetchFrom(file);
-        targetDirectory->List(false);
+        targetDirectory->List(path, recur);
         delete targetDirectory;
         delete file;
     }
@@ -350,19 +350,7 @@ FileSystem::List(char *path)
 void
 FileSystem::RecursiveList(char *path)
 {
-    Directory *rootDirectory = new Directory(NumDirEntries);
-    Directory *targetDirectory = new Directory(NumDirEntries);
-    int sector;
-    rootDirectory->FetchFrom(directoryFile);
-    sector = rootDirectory->SearchPath(path, 0);
-
-    OpenFile* file = new OpenFile(sector);
-    targetDirectory->FetchFrom(file);
-    targetDirectory->List(true);
-
-    delete rootDirectory;
-    delete targetDirectory;
-    delete file; 
+    List(path, true);
 }
 
 //----------------------------------------------------------------------
