@@ -225,6 +225,8 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
     	    	    targetDirectory->WriteBack(targetFile);
     	    	    freeMap->WriteBack(freeMapFile);
                 if(isDir) {
+                    delete targetFile;
+                    delete targetDirectory;
                     cout << "is dir " << endl;
                     targetFile = new OpenFile(sector);
                     targetDirectory = new Directory(NumDirEntries);
@@ -359,6 +361,9 @@ FileSystem::RecursiveList(char *path)
     targetDirectory->FetchFrom(file);
     targetDirectory->List(true);
 
+    delete rootDirectory;
+    delete targetDirectory;
+    delete file; 
 }
 
 //----------------------------------------------------------------------
