@@ -156,6 +156,7 @@ Print(char *name)
 static void
 CreateDirectory(char *name)
 {
+    ASSERT(name[0] == '/');
     if(!kernel->fileSystem->Create(name, 0, true)) {
         printf("Create directory file %s failed!\n", name);
         return;
