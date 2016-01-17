@@ -359,7 +359,6 @@ FileSystem::RecursiveRemove(char *path)
 
     delete baseDirectory;
 
-    cout << sector << endl;
     if(sector == -1) {
         return FALSE;   
     }
