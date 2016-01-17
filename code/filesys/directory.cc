@@ -128,8 +128,6 @@ Directory::SearchPath(char *name, int offset)
     char filename[FileNameMaxLen + 1];
     Directory *directory;
     
-    ASSERT(name[offset] == '/');
-
     // root
     if(name[1] == '\0')
         return DirectorySector;
@@ -165,7 +163,11 @@ Directory::SearchPath(char *name, int offset)
     directory = new Directory(DirectoryFileSize);
     OpenFile* dir = new OpenFile(sector);
     directory->FetchFrom(dir);
-    return directory->SearchPath(name, i + offset);
+    sector = directory->SearchPath(name, i + offset);
+
+    delete directory;
+    delete dir;
+
 }
 
 //----------------------------------------------------------------------

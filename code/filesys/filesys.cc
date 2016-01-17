@@ -202,7 +202,6 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
     
     if (targetDirectory->Find(act_name) != -1) {
       success = 0;			// file is already in directory
-        cout << "!NO!" << endl;
     }else {	
 
         
@@ -227,7 +226,6 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
                 if(isDir) {
                     delete targetFile;
                     delete targetDirectory;
-                    cout << "is dir " << endl;
                     targetFile = new OpenFile(sector);
                     targetDirectory = new Directory(NumDirEntries);
                     targetDirectory->WriteBack(targetFile);
@@ -341,6 +339,7 @@ FileSystem::List(char *path)
         targetDirectory->FetchFrom(file);
         targetDirectory->List(false);
         delete targetDirectory;
+        delete file;
     }
 
 
