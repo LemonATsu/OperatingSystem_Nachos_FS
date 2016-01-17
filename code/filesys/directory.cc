@@ -167,6 +167,9 @@ Directory::SearchPath(char *name, int offset)
 
     delete directory;
     delete dir;
+    
+    return sector;
+
 
 }
 
