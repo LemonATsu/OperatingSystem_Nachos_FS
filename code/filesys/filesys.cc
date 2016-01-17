@@ -189,12 +189,13 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
     rootDirectory->FetchFrom(directoryFile);
     
     ExtractBasePath(BasedPath, act_name, name);
-    sector = rootDirectory->SearchPath(BasedPath, 0);
+    sector = rootDirectory->SearchPath(BasedPath, 0); // find the sector number of directory.
 
     if(sector == -1) {
         return 0;
     }
     
+    // open and fetch target dir from disk
     targetFile = new OpenFile(sector);
     targetDirectory = new Directory(NumDirEntries);
     targetDirectory->FetchFrom(targetFile);
@@ -204,8 +205,6 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
       success = 0;			// file is already in directory
     }else {	
 
-        
-
         freeMap = new PersistentBitmap(freeMapFile,NumSectors);
         sector = freeMap->FindAndSet();	// find a sector to hold the file header
     	if (sector == -1) 		
@@ -214,16 +213,18 @@ FileSystem::Create(char *name, int initialSize, bool isDir)
             success = 0;	// no space in directory
 	    else {
     	    hdr = new FileHeader;
-	    if (!hdr->Allocate(freeMap, size))
+	        if (!hdr->Allocate(freeMap, size))
             	success = FALSE;	// no space on disk for data
-	    else {	
-	    	success = 1;
-		// everthing worked, flush all changes back to disk
+	        else {	
+	    	    success = 1;
+		        // everthing worked, flush all changes back to disk
 
-                    hdr->WriteBack(sector); 		
-    	    	    targetDirectory->WriteBack(targetFile);
-    	    	    freeMap->WriteBack(freeMapFile);
+                hdr->WriteBack(sector); 		
+    	    	targetDirectory->WriteBack(targetFile);
+    	    	freeMap->WriteBack(freeMapFile);
+                    
                 if(isDir) {
+                    // if it is a directory, need to write directory info back to it.
                     delete targetFile;
                     delete targetDirectory;
                     targetFile = new OpenFile(sector);
@@ -407,18 +408,21 @@ FileSystem::OpenFileForId(char *name)
 
     return fd;
 }
+
 int 
 FileSystem::WriteToFileId(char *buf, int size, OpenFileId id)
 {
     OpenFile* file = SysWideOpenFileTable[id];
     return file->Write(buf, size);
 }
+
 int 
 FileSystem::ReadFromFileId(char *buf, int size, OpenFileId id)
 {
     OpenFile* file = SysWideOpenFileTable[id];
     return file->Read(buf, size);
 }
+
 int 
 FileSystem::CloseFileId(OpenFileId id)
 {
@@ -436,6 +440,7 @@ FileSystem::CloseFileId(OpenFileId id)
 void
 FileSystem::ExtractBasePath(char *base, char *name, char *abs)
 {
+    // Extract base path by searching for the location of last '/'
     int mark;
     int i, j = 0;
     for(i = 0; abs[i]; i++)
@@ -449,7 +454,6 @@ FileSystem::ExtractBasePath(char *base, char *name, char *abs)
     for(i = mark; abs[i]; i++)
         name[j++] = abs[i];
     name[j] = '\0';
-
 }
 
 
