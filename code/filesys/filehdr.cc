@@ -215,9 +215,9 @@ void
 FileHeader::WriteBack(int sector)
 {
     char buf[SectorSize];
-    //memcpy(&buf, (char *)this, sizeof(buf));
+    memcpy(&buf, (char *)this, sizeof(buf));
     //kernel->synchDisk->WriteSector(sector, buf); 
-    kernel->synchDisk->WriteSector(sector, (char*) this); 
+    kernel->synchDisk->WriteSector(sector, buf); 
     for(int i = 0; i < NumIndirect; i ++) {
         if(indirectTable[i]) {
             indirectTable[i]->WriteBackIndirect(dataSectors[i + NumDirect]); 
@@ -231,7 +231,7 @@ FileHeader::WriteBackIndirect(int sector)
     char buf[SectorSize];
     memcpy(&buf, (char *)this, sizeof(buf));
     //kernel->synchDisk->WriteSector(sector, buf); 
-    kernel->synchDisk->WriteSector(sector, (char*) this); 
+    kernel->synchDisk->WriteSector(sector, buf); 
 }
 
 //----------------------------------------------------------------------
