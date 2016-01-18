@@ -310,7 +310,7 @@ FileSystem::Remove(char *name, bool recur)
     
     baseDir = new OpenFile(sector);
     OPENDIR(baseDirectory, baseDir);
-    sector = baseDirectory->Find(filename);
+    sector = baseDirectory->Find(filename); // Find if the file exist
     
     if (sector == -1 || sector == DirectorySector) {
         delete baseDirectory;
@@ -323,7 +323,7 @@ FileSystem::Remove(char *name, bool recur)
     if(recur) {
         tarDir = new OpenFile(sector);
         OPENDIR(targetDirectory, tarDir);
-        targetDirectory->Destroy(freeMap, name, tarDir);
+        targetDirectory->Destroy(freeMap, name, tarDir); // Recursively destroy the directory
         delete targetDirectory;
         delete tarDir;
     }
@@ -333,7 +333,7 @@ FileSystem::Remove(char *name, bool recur)
 
     fileHdr->Deallocate(freeMap);  		// remove data blocks
     freeMap->Clear(sector);			// remove header block
-    baseDirectory->Remove(filename);
+    baseDirectory->Remove(filename); // remove it from its base
 
     freeMap->WriteBack(freeMapFile);		// flush to disk
     baseDirectory->WriteBack(baseDir);        // flush to disk
