@@ -240,8 +240,11 @@ Directory::List(char *from, bool recur)
    for (int i = 0; i < tableSize; i++)
 	if (table[i].inUse) {
         printf("%s", from);
-	    printf("%s\n", table[i].name);
-
+	    printf("%s ", table[i].name);
+        if(table[i].isDir)
+            printf("D\n");
+        else
+            printf("F\n");
         // recursively traverse
         if(recur && table[i].isDir) {
             char path[MAX_PATH_LEN];
