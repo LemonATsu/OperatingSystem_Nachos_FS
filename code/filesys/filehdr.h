@@ -21,7 +21,7 @@
 #define MaxFileSize 	(NumDirect * SectorSize)
 #define NumIndex    ((SectorSize - 1 * sizeof(int)) / sizeof(int))
 #define NumDirect 16
-#define NumIndirect 8
+#define NumIndirect 14
 #define NumMaxSect 30
 #define NumTripleIndirect 6
 
