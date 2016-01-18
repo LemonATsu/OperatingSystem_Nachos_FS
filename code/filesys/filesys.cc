@@ -286,10 +286,11 @@ FileSystem::Open(char *name)
 //----------------------------------------------------------------------
 
 bool
-FileSystem::Remove(char *name)
+FileSystem::Remove(char *name, bool recur)
 { 
-    Directory *directory;
+    Directory *baseDirectory;
     Directory *targetDirectory;
+    OpenFile  * baseDir;
     OpenFile  * tarDir;
     char BasePath[MAX_PATH_LEN + 1];
     char filename[FileNameMaxLen + 1];
@@ -297,111 +298,52 @@ FileSystem::Remove(char *name)
     FileHeader *fileHdr;
     int sector;
    
-    directory = new Directory(NumDirEntries);
-    directory->FetchFrom(directoryFile);
+    OPENDIR(baseDirectory, directoryFile);
     ExtractBasePath(BasePath, filename, name);
-    sector = directory->SearchPath(BasePath, 0);
+    sector = baseDirectory->SearchPath(BasePath, 0);
 
-    delete directory;
+    delete baseDirectory;
 
     if (sector == -1) {
        return FALSE;			 // file directory not found 
     }
     
-    tarDir = new OpenFile(sector);
-    directory = new Directory(NumDirEntries);
-    directory->FetchFrom(tarDir);
-
-    sector = directory->Find(filename);
-    
-    if (sector == -1) {
-        delete directory;
-        delete tarDir;
-        return FALSE;
-    }
-    
-    fileHdr = new FileHeader;
-    fileHdr->FetchFrom(sector);
-
-    freeMap = new PersistentBitmap(freeMapFile,NumSectors);
-
-    fileHdr->Deallocate(freeMap);  		// remove data blocks
-    freeMap->Clear(sector);			// remove header block
-    directory->Remove(filename);
-
-    freeMap->WriteBack(freeMapFile);		// flush to disk
-    directory->WriteBack(tarDir);        // flush to disk
-    delete fileHdr;
-    delete directory;
-    delete tarDir;
-    delete freeMap;
-    return TRUE;
-} 
-
-
-bool
-FileSystem::RecursiveRemove(char *path)
-{
-    Directory *baseDirectory;
-    Directory *targetDirectory;
-    PersistentBitmap *freeMap;
-    FileHeader *fileHdr;
-    OpenFile *baseDir;
-    OpenFile *tarDir;
-    char BasePath[MAX_PATH_LEN + 1];
-    char filename[FileNameMaxLen + 1];
-    int sector;
-
-    cout << "Recursive remove" << endl;
-    OPENDIR(baseDirectory, directoryFile);
-    ExtractBasePath(BasePath, filename, path);
-    sector = baseDirectory->SearchPath(BasePath, 0); // find the base of target directory
-
-    delete baseDirectory;
-
-    if(sector == -1) {
-        return FALSE;   
-    }
-    
-
     baseDir = new OpenFile(sector);
     OPENDIR(baseDirectory, baseDir);
-    sector = baseDirectory->Find(filename); // search target in its base.
-
-
-    if(sector == -1 || sector == DirectorySector) {
-        delete baseDir;
+    sector = baseDirectory->Find(filename);
+    
+    if (sector == -1 || sector == DirectorySector) {
         delete baseDirectory;
+        delete baseDir;
         return FALSE;
     }
-    
-    tarDir = new OpenFile(sector); // open target directory
+  
     freeMap = new PersistentBitmap(freeMapFile,NumSectors);
-    OPENDIR(targetDirectory, tarDir);
     
-    cout << "Destroy " << path << endl;
-    targetDirectory->Destroy(freeMap, path, tarDir);  // destroy the target directory
-
-
-    // remove target directory from its base directory
+    if(recur) {
+        tarDir = new OpenFile(sector);
+        OPENDIR(targetDirectory, tarDir);
+        targetDirectory->Destroy(freeMap, name, tarDir);
+        delete targetDirectory;
+        delete tarDir;
+    }
+   
     fileHdr = new FileHeader;
     fileHdr->FetchFrom(sector);
+
     fileHdr->Deallocate(freeMap);  		// remove data blocks
     freeMap->Clear(sector);			// remove header block
     baseDirectory->Remove(filename);
-    
+
     freeMap->WriteBack(freeMapFile);		// flush to disk
     baseDirectory->WriteBack(baseDir);        // flush to disk
-
-    delete tarDir;
-    delete baseDir;
-    delete targetDirectory;
+    
     delete baseDirectory;
+    delete baseDir;
     delete fileHdr;
     delete freeMap;
-
-}
-
+    return TRUE;
+} 
 
 //----------------------------------------------------------------------
 // FileSystem::List

@@ -97,7 +97,7 @@ class FileSystem {
 
     OpenFile* Open(char *name); 	// Open a file (UNIX open)
 
-    bool Remove(char *name);  		// Delete a file (UNIX unlink)
+    bool Remove(char *name, bool recur);  		// Delete a file (UNIX unlink)
     bool RecursiveRemove(char *path);  		// Delete a file (UNIX unlink)
 
     void List(char *path, bool recur);			// List all the files in the file system
