@@ -264,7 +264,7 @@ Directory::List(char *from, bool recur)
     }
 
     if(free)
-        delete from;
+        delete[] from;
 }
 
 //----------------------------------------------------------------------
