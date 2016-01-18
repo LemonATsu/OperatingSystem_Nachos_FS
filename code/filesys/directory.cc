@@ -241,13 +241,16 @@ Directory::List(char *from, bool recur)
 	if (table[i].inUse) {
         printf("%s", from);
 	    printf("%s ", table[i].name);
+    
         if(table[i].isDir)
             printf("D\n");
         else
             printf("F\n");
+
         // recursively traverse
         if(recur && table[i].isDir) {
             char path[MAX_PATH_LEN];
+            
             strncpy(path, from, MAX_PATH_LEN);
             strncat(path, table[i].name, FileNameMaxLen);
             Directory *directory = new Directory(DirectoryFileSize);
@@ -257,7 +260,7 @@ Directory::List(char *from, bool recur)
 
             delete directory;
             delete file;
-        }    
+        }
     }
 
     if(free)
@@ -299,12 +302,15 @@ Directory::Destroy(PersistentBitmap *freeMap, char *path, OpenFile *file)
                 // It is a directory, remove it recursively
                 char tarPath[MAX_PATH_LEN + 1];
                 OpenFile *tarDir = new OpenFile(table[i].sector);
-
+                Directory *directory;
+                OPENDIR(directory, tarDir);
+                
                 strncpy(tarPath, path, MAX_PATH_LEN);
                 strncat(tarPath, table[i].name, FileNameMaxLen);
-                
+                directory->Destroy(freeMap, tarPath, tarDir);                           
                 // prevent leak
                 delete tarDir;
+                delete directory;
             }
 
             // remove file from table and idsk.
